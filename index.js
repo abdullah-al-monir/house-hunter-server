@@ -45,7 +45,14 @@ async function run() {
     await client.connect();
     app.post("/users", async (req, res) => {
       try {
-        const { name, role, email, number, password } = req.body;
+        const { name, role, email, number, password, dp } = req.body;
+        const existingUser = await userCollection.findOne({ email });
+
+        if (existingUser) {
+          return res
+            .status(400)
+            .json({ message: "User with this email already exists" });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await userCollection.insertOne({
           name,
@@ -53,8 +60,21 @@ async function run() {
           email,
           number,
           password: hashedPassword,
+          dp,
         });
-        res.send(result);
+        const token = jwt.sign(
+          {
+            name,
+            role,
+            email,
+            number,
+            password: hashedPassword,
+            dp,
+          },
+          process.env.JWT_SECRET
+        );
+
+        res.json({ result, token });
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -70,11 +90,11 @@ async function run() {
     app.post("/login", async (req, res) => {
       try {
         const { email, password } = req.body;
-
         const user = await userCollection.findOne({ email });
-
-        if (user && (await bcrypt.compare(password, user.password))) {
+        const matched = await bcrypt.compare(password, user.password);
+        if (user && matched) {
           const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET);
+
           res.json({ token });
         } else {
           res.status(401).json({ message: "Invalid credentials" });
