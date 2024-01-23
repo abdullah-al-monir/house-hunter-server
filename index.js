@@ -39,6 +39,7 @@ const client = new MongoClient(mongoURI, {
   },
 });
 const userCollection = client.db("houseHunterDB").collection("users");
+const houseCollection = client.db("houseHunterDB").collection("houses");
 
 async function run() {
   try {
@@ -103,6 +104,61 @@ async function run() {
         console.error(error);
         res.status(500).json({ message: "Internal Server Error" });
       }
+    });
+
+    // to get houses
+    app.get("/houses", async (req, res) => {
+      const search = req.query.search;
+      const bedrooms = req.query.bedrooms;
+      const bathrooms = req.query.bathrooms;
+      const totalRooms = req.query.totalRooms;
+      const city = req.query.city;
+      const rentRange = req.query.rentRange;
+
+      const query = {};
+      const filters = [];
+
+      if (rentRange) {
+        const [minPrice, maxPrice] = rentRange.split("-");
+        filters.push({
+          rentPerMonth: {
+            $gte: parseInt(minPrice),
+            $lte: parseInt(maxPrice),
+          },
+        });
+      }
+
+      if (search) {
+        filters.push({
+          $or: [
+            { city: { $regex: search, $options: "i" } },
+            { bedrooms: { $regex: search, $options: "i" } },
+            { bathrooms: { $regex: search, $options: "i" } },
+            { address: { $regex: search, $options: "i" } },
+            { homeSizeSqFt: { $regex: search, $options: "i" } },
+          ],
+        });
+      }
+
+      if (bedrooms) {
+        filters.push({ bedrooms: parseInt(bedrooms) });
+      }
+      if (bathrooms) {
+        filters.push({ bathrooms: parseInt(bathrooms) });
+      }
+      if (totalRooms) {
+        filters.push({ totalRooms: parseInt(totalRooms) });
+      }
+
+      if (city) {
+        filters.push({ city: { $regex: city, $options: "i" } });
+      }
+
+      if (filters.length > 0) {
+        query.$and = filters;
+      }
+      const result = await houseCollection.find(query).toArray();
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
