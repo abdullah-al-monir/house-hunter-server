@@ -3,7 +3,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 7000;
 const mongoURI = process.env.MONGO_URI;
@@ -18,15 +18,15 @@ app.use(
 );
 
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization;
+  const token = req?.headers.authorization;
   if (!token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: "Invalid token" });
     }
-    req.user = user;
+    req.user = decoded;
     next();
   });
 };
@@ -114,7 +114,7 @@ async function run() {
       const totalRooms = req.query.totalRooms;
       const city = req.query.city;
       const rentRange = req.query.rentRange;
-
+      const ownerEmail = req.query.email;
       const query = {};
       const filters = [];
 
@@ -153,6 +153,9 @@ async function run() {
       if (city) {
         filters.push({ city: { $regex: city, $options: "i" } });
       }
+      if (ownerEmail) {
+        filters.push({ ownerEmail: { $regex: ownerEmail, $options: "i" } });
+      }
 
       if (filters.length > 0) {
         query.$and = filters;
@@ -161,6 +164,22 @@ async function run() {
       res.send(result);
     });
 
+    // to add a new house info
+    app.post("/houses", async (req, res) => {
+      const houseInfo = req.body;
+      const result = await houseCollection.insertOne(houseInfo);
+      res.send(result);
+    });
+    // to get a single house
+    
+    //  to delete a house info
+    app.delete("/houses/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await houseCollection.deleteOne(query);
+      res.send(result);
+    });
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
