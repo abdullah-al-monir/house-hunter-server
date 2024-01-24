@@ -12,7 +12,7 @@ const mongoURI = process.env.MONGO_URI;
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "https://house-hunter-d21c8.web.app"],
     credentials: true,
   })
 );
@@ -75,7 +75,17 @@ async function run() {
           process.env.JWT_SECRET
         );
 
-        res.json({ result, token });
+        res.json({
+          result,
+          token,
+          user: {
+            name,
+            role,
+            email,
+            number,
+            dp,
+          },
+        });
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -96,7 +106,7 @@ async function run() {
         if (user && matched) {
           const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET);
 
-          res.json({ token });
+          res.json({ token, user });
         } else {
           res.status(401).json({ message: "Invalid credentials" });
         }
@@ -171,9 +181,40 @@ async function run() {
       res.send(result);
     });
     // to get a single house
-    
+    app.get("/house/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await houseCollection.findOne(query);
+      res.send(result);
+    });
+    // to update a single house info
+    app.put("/house/:_id", async (req, res) => {
+      const id = req.params._id;
+      const updatedHouse = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          name: updatedHouse.name,
+          city: updatedHouse.city,
+          ownerName: updatedHouse.ownerName,
+          ownerEmail: updatedHouse.ownerEmail,
+          contactNumber: updatedHouse.contactNumber,
+          rentPerMonth: updatedHouse.rentPerMonth,
+          availability: updatedHouse.availability,
+          description: updatedHouse.description,
+          location: updatedHouse.location,
+          bedrooms: updatedHouse.bedrooms,
+          bathrooms: updatedHouse.bathrooms,
+          totalRooms: updatedHouse.totalRooms,
+          image: updatedHouse.image,
+          homeSizeSqFt: updatedHouse.homeSizeSqFt,
+        },
+      };
+      const result = await houseCollection.updateOne(filter, update);
+      res.send(result);
+    });
     //  to delete a house info
-    app.delete("/houses/:id", async (req, res) => {
+    app.delete("/house/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const query = { _id: new ObjectId(id) };
