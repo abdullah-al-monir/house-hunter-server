@@ -43,7 +43,7 @@ const houseCollection = client.db("houseHunterDB").collection("houses");
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     app.post("/users", async (req, res) => {
       try {
         const { name, role, email, number, password, dp } = req.body;
@@ -221,7 +221,7 @@ async function run() {
       const result = await houseCollection.deleteOne(query);
       res.send(result);
     });
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
